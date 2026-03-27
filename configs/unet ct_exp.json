@@ -1,0 +1,41 @@
+{
+    "model": {
+        "name": "Unet",
+        "in_chans": 1,
+        "out_chans": 1,
+        "chans": 32,
+        "num_pool_layers": 4,
+        "drop_prob": 0.2,
+        "use_att": true,
+        "use_res": true,
+        "leaky_negative_slope": 0.01
+    },
+    "dataset": {
+        "data_dir": "data_2d",
+        "splits_json": "data_2d/splits_final.json",
+        "fold": 0,
+        "modality": "ct",
+        "target_size": [256, 256]
+    },
+    "dataloader": {
+        "batch_size": 4,
+        "num_workers": 4,
+        "seed": 100
+    },
+    "training": {
+        "epochs": 250,
+        "learning_rate": 1e-5,
+        "weight_decay": 1e-6,
+        "loss": "DiceBCELoss",
+        "input_shape": [1, 1, 256, 256]
+    },
+    "logging": {
+        "use_wandb": true,
+        "project": "MMI",
+        "experiment_name": "unet_ct",
+        "entity": "levitate",
+        "log_model_summary": true,
+        "ckpt_dir": "checkpoints"
+    },
+    "device": "cuda"
+}
