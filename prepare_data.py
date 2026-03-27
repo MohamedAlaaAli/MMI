@@ -12,7 +12,7 @@ from sklearn.model_selection import KFold
 # ======================
 images_dir = "/kaggle/input/datasets/mohamednasserhussien/psma-pet-ct-lesions/PSMA-PET-CT-Lesions_v2/imagesTr"
 labels_dir = "/kaggle/input/datasets/mohamednasserhussien/psma-pet-ct-lesions/PSMA-PET-CT-Lesions_v2/labelsTr"
-out_dir = "/kaggle/working/data_2d"
+out_dir = "/kaggle/input/datasets/mohamednasserhussien/psma-pet-ct-lesions/data_2d"
 os.makedirs(out_dir, exist_ok=True)
 
 save_empty_slices = False  
