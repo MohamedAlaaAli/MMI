@@ -45,7 +45,7 @@ class DiceLoss(nn.Module):
                 return torch.tensor(0.0, device=pred.device, requires_grad=True)
             dice_score = dice_score[mask]
 
-        loss = -dice_score.mean()
+        loss = 1 - dice_score.mean()
         return loss
 
 
