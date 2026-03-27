@@ -97,7 +97,6 @@ checkpoints/
 # Data (VERY IMPORTANT)
 # =========================
 data/
-data_2d/
 *.nii.gz
 *.npy
 *.npz

@@ -119,37 +119,39 @@ print("✅ Done slicing. Now creating splits...")
 # ======================
 # CREATE 3-FOLD SPLITS
 # ======================
-kf = KFold(n_splits=n_splits, shuffle=True, random_state=42)
-
-splits = []
-
-case_ids_array = np.array(case_ids)
-
-for fold, (train_idx, val_idx) in enumerate(kf.split(case_ids_array)):
-
-    train_cases = case_ids_array[train_idx]
-    val_cases = case_ids_array[val_idx]
-
-    train_slices = []
-    val_slices = []
-
-    for c in train_cases:
-        train_slices.extend(case_to_slices.get(c, []))
-
-    for c in val_cases:
-        val_slices.extend(case_to_slices.get(c, []))
-
-    splits.append({
-        "train": train_slices,
-        "val": val_slices
-    })
-
-    print(f"Fold {fold}: {len(train_slices)} train slices, {len(val_slices)} val slices")
-
-# Save JSON
 splits_path = os.path.join(out_dir, "splits_final.json")
 
-with open(splits_path, "w") as f:
-    json.dump(splits, f, indent=4)
+if os.path.exists(splits_path):
+    print(f"✅ Splits already exist at {splits_path}, skipping.")
+else:
+    kf = KFold(n_splits=n_splits, shuffle=True, random_state=42)
 
-print(f"✅ Splits saved to {splits_path}")
+    splits = []
+
+    case_ids_array = np.array(case_ids)
+
+    for fold, (train_idx, val_idx) in enumerate(kf.split(case_ids_array)):
+
+        train_cases = case_ids_array[train_idx]
+        val_cases = case_ids_array[val_idx]
+
+        train_slices = []
+        val_slices = []
+
+        for c in train_cases:
+            train_slices.extend(case_to_slices.get(c, []))
+
+        for c in val_cases:
+            val_slices.extend(case_to_slices.get(c, []))
+
+        splits.append({
+            "train": train_slices,
+            "val": val_slices
+        })
+
+        print(f"Fold {fold}: {len(train_slices)} train slices, {len(val_slices)} val slices")
+
+    with open(splits_path, "w") as f:
+        json.dump(splits, f, indent=4)
+
+    print(f"✅ Splits saved to {splits_path}")
