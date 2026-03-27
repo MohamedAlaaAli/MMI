@@ -10,9 +10,9 @@ from sklearn.model_selection import KFold
 # ======================
 # CONFIG
 # ======================
-images_dir = "data/PSMA-PET-CT-Lesions_v2/imagesTr"
-labels_dir = "data/PSMA-PET-CT-Lesions_v2/labelsTr"
-out_dir = "data_2d"
+images_dir = "/kaggle/input/datasets/mohamednasserhussien/psma-pet-ct-lesions/PSMA-PET-CT-Lesions_v2/imagesTr"
+labels_dir = "/kaggle/input/datasets/mohamednasserhussien/psma-pet-ct-lesions/PSMA-PET-CT-Lesions_v2/labelsTr"
+out_dir = "/kaggle/working/data_2d"
 
 os.makedirs(out_dir, exist_ok=True)
 
