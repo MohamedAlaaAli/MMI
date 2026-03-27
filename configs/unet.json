@@ -37,5 +37,5 @@
     "log_model_summary": true,
     "ckpt_dir": "checkpoints"
   },
-  "device": "cuda",
+  "device": "cuda"
 }
