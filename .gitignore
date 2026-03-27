@@ -108,3 +108,6 @@ data_2d/
 nnUNet_raw/
 nnUNet_preprocessed/
 nnUNet_results/
+ckpts/
+wandb/
+
