@@ -152,14 +152,16 @@ class Trainer:
             if batch_idx in random.sample(range(len(self.val_loader)), k=min(num_images, len(self.val_loader))):
                 # Take first few images in batch
                 for i in range(min(x.size(0), num_images)):
-                    img_batches.append(
-                        wandb.Image(
-                            x[i].cpu(),
-                            masks={
-                                "ground_truth": y[i].cpu(),
-                                "prediction": pred_bin[i].cpu()
-                            }
-                        )
+                    img = torch.clamp(x[i].cpu(), 0.0, 1.0)  # Make sure image is in 0..1
+                    y_mask = y[i].cpu().squeeze(0).numpy()   # Shape H x W
+                    pred_mask = pred_bin[i].cpu().squeeze(0).numpy()  # Shape H x W
+
+                    wandb.Image(
+                        img,
+                        masks={
+                            "ground_truth": {"mask_data": y_mask},
+                            "prediction": {"mask_data": pred_mask}
+                        }
                     )
 
         val_loss /= len(self.val_loader)
