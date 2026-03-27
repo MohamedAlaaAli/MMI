@@ -13,6 +13,7 @@ from torchinfo import summary
 
 from dataloaders import get_dataloaders 
 from losses import DiceBCELoss
+from metrics import BatchSegmentationMetrics
 from unet import *
 
 
@@ -85,13 +86,14 @@ class Trainer:
         # -----------------------------
         # WandB
         # -----------------------------
-        wandb.init(project=self.config.get("wandb_project", "MMI"),
+        wandb.init(project=self.config["logging"].get("project", "MMI"),
                    config=self.config,
-                   name=self.config.get("experiment_name", None))
+                   name=self.config["logging"].get("experiment_name", None))
+        
         wandb.watch(self.model, log="all", log_freq=50)
 
         # Log model summary
-        dummy_input = torch.randn(*self.config.get("input_shape", [1, 1, 256, 256])).to(self.device)
+        dummy_input = torch.randn(*self.config["training"].get("input_shape", [1, 1, 256, 256])).to(self.device)
         model_summary_str = str(summary(self.model, input_data=dummy_input))
         print(model_summary_str)
         wandb.log({"model_summary": wandb.Html(model_summary_str.replace("\n", "<br>"))})
@@ -115,19 +117,23 @@ class Trainer:
             self.optimizer.step()
             running_loss += loss.item()
 
-            # Update tqdm description dynamically
             loop.set_postfix({"loss": f"{loss.item():.4f}"})
 
-            # Log to wandb every batch
             if batch_idx % 10 == 0:
                 wandb.log({"train_loss": loss.item(), "epoch": epoch})
 
         return running_loss / len(self.train_loader)
 
+
+
     @torch.no_grad()
     def validate(self, epoch):
         self.model.eval()
         val_loss = 0.0
+        metrics = BatchSegmentationMetrics()
+        
+        all_preds = []
+        all_targets = []
 
         # Wrap the DataLoader with tqdm for progress
         for x, y in tqdm(self.val_loader, desc=f"Validation Epoch {epoch+1}", leave=False):
@@ -136,8 +142,33 @@ class Trainer:
             loss = self.criterion(out, y)
             val_loss += loss.item()
 
+            # Binarize predictions at 0.5 threshold
+            pred_bin = (torch.sigmoid(out) > 0.5).long()
+            all_preds.append(pred_bin.cpu())
+            all_targets.append(y.cpu())
+
         val_loss /= len(self.val_loader)
-        wandb.log({"val_loss": val_loss, "epoch": epoch})
+
+        # Concatenate all batches
+        all_preds = torch.cat(all_preds, dim=0)
+        all_targets = torch.cat(all_targets, dim=0)
+
+        # Compute metrics
+        metric_dict = metrics.compute_all(all_preds, all_targets)
+
+        # Log everything to wandb
+        log_dict = {"val_loss": val_loss, "epoch": epoch}
+        log_dict.update(metric_dict)
+        wandb.log(log_dict)
+
+        print(
+            f"Epoch [{epoch+1}] Val Loss: {val_loss:.4f} | "
+            f"Dice: {metric_dict['dice']:.4f} | "
+            f"Precision: {metric_dict['precision']:.4f} | "
+            f"Recall: {metric_dict['recall']:.4f} | "
+            f"HD95: {metric_dict['hd95']:.4f}"
+        )
+
         return val_loss
 
     def fit(self):
