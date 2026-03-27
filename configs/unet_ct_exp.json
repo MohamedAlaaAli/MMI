@@ -11,8 +11,8 @@
         "leaky_negative_slope": 0.01
     },
     "dataset": {
-        "data_dir": "/kaggle/working/MMI/data_2d",
-        "splits_json": "/kaggle/working/MMI/data_2d/splits_final.json",
+        "data_dir": "data_2d",
+        "splits_json": "data_2d/splits_final.json",
         "fold": 0,
         "modality": "ct",
         "target_size": [256, 256]
@@ -35,7 +35,7 @@
         "experiment_name": "unet_ct",
         "entity": "levitate",
         "log_model_summary": true,
-        "ckpt_dir": "/kaggle/working/checkpoints"
+        "ckpt_dir": "checkpoints"
     },
     "device": "cuda"
 }
