@@ -10,6 +10,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torchinfo import summary
+import torchvision
 
 from dataloaders import get_dataloaders 
 from losses import DiceBCELoss
@@ -124,10 +125,8 @@ class Trainer:
 
         return running_loss / len(self.train_loader)
 
-
-
     @torch.no_grad()
-    def validate(self, epoch):
+    def validate(self, epoch, num_images=20):
         self.model.eval()
         val_loss = 0.0
         metrics = BatchSegmentationMetrics()
@@ -135,17 +134,33 @@ class Trainer:
         all_preds = []
         all_targets = []
 
-        # Wrap the DataLoader with tqdm for progress
-        for x, y in tqdm(self.val_loader, desc=f"Validation Epoch {epoch+1}", leave=False):
+        # For image logging
+        img_batches = []
+
+        for batch_idx, (x, y) in enumerate(tqdm(self.val_loader, desc=f"Validation Epoch {epoch+1}", leave=False)):
             x, y = x.to(self.device), y.to(self.device)
             out = self.model(x)
             loss = self.criterion(out, y)
             val_loss += loss.item()
 
-            # Binarize predictions at 0.5 threshold
+            # Binarize predictions
             pred_bin = (torch.sigmoid(out) > 0.5).long()
             all_preds.append(pred_bin.cpu())
             all_targets.append(y.cpu())
+
+            # Randomly save a batch for WandB logging
+            if batch_idx in random.sample(range(len(self.val_loader)), k=min(num_images, len(self.val_loader))):
+                # Take first few images in batch
+                for i in range(min(x.size(0), num_images)):
+                    img_batches.append(
+                        wandb.Image(
+                            x[i].cpu(),
+                            masks={
+                                "ground_truth": y[i].cpu(),
+                                "prediction": pred_bin[i].cpu()
+                            }
+                        )
+                    )
 
         val_loss /= len(self.val_loader)
 
@@ -153,12 +168,12 @@ class Trainer:
         all_preds = torch.cat(all_preds, dim=0)
         all_targets = torch.cat(all_targets, dim=0)
 
-        # Compute metrics
         metric_dict = metrics.compute_all(all_preds, all_targets)
 
-        # Log everything to wandb
         log_dict = {"val_loss": val_loss, "epoch": epoch}
         log_dict.update(metric_dict)
+        if img_batches:
+            log_dict["val_images"] = img_batches
         wandb.log(log_dict)
 
         print(
