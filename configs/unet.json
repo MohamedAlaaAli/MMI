@@ -11,14 +11,14 @@
     "leaky_negative_slope": 0.01
   },
   "dataset": {
-    "data_dir": "data_2d",
-    "splits_json": "data_2d/splits_final.json",
+    "data_dir": "/kaggle/input/datasets/mohamednasserhussien/psma-pet-ct-2d-slices/data_2d",
+    "splits_json": "splits_final.json",
     "fold": 0,
     "modality": "pet",
     "target_size": [256, 256]
   },
   "dataloader": {
-    "batch_size": 4,
+    "batch_size": 32,
     "num_workers": 4,
     "seed": 100
   },
