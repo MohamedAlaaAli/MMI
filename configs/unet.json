@@ -12,7 +12,7 @@
   },
   "dataset": {
     "data_dir": "/kaggle/input/datasets/mohamednasserhussien/psma-pet-ct-lesions/data_2d",
-    "splits_json": "/kaggle/input/datasets/mohamednasserhussien/psma-pet-ct-lesions/data_2d/splits_final.json",
+    "splits_json": "splits_final.json",
     "fold": 0,
     "modality": "pet",
     "target_size": [256, 256]
