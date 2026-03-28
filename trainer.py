@@ -189,7 +189,7 @@ class Trainer:
                 no_improve_counter = 0  # Reset counter
                 torch.save(
                     self.model.state_dict(),
-                    os.path.join(f"{self.model_name}_best_model.pth")
+                    f"{self.model_name}_best_model.pth"
                 )
                 print("Saved best model!")
             else:
