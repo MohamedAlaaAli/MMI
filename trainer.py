@@ -126,16 +126,13 @@ class Trainer:
         return running_loss / len(self.train_loader)
 
     @torch.no_grad()
-    def validate(self, epoch, num_images=20):
+    def validate(self, epoch):
         self.model.eval()
         val_loss = 0.0
         metrics = BatchSegmentationMetrics()
-        
-        all_preds = []
-        all_targets = []
 
-        # For image logging
-        img_batches = []
+        dice_sum, prec_sum, rec_sum, hd95_sum = 0.0, 0.0, 0.0, 0.0
+        n_batches = 0
 
         for batch_idx, (x, y) in enumerate(tqdm(self.val_loader, desc=f"Validation Epoch {epoch+1}", leave=False)):
             x, y = x.to(self.device), y.to(self.device)
@@ -143,39 +140,25 @@ class Trainer:
             loss = self.criterion(out, y)
             val_loss += loss.item()
 
-            # Binarize predictions
             pred_bin = (torch.sigmoid(out) > 0.5).long()
-            all_preds.append(pred_bin.cpu())
-            all_targets.append(y.cpu())
+            batch_metrics = metrics.compute_all(pred_bin.cpu(), y.cpu())
 
-            # Randomly save a batch for WandB logging
-            if batch_idx in random.sample(range(len(self.val_loader)), k=min(num_images, len(self.val_loader))):
-                # Take first few images in batch
-                for i in range(min(x.size(0), num_images)):
-                    img = torch.clamp(x[i].cpu(), 0.0, 1.0)  # Make sure image is in 0..1
-                    y_mask = y[i].cpu().squeeze(0).numpy()   # Shape H x W
-                    pred_mask = pred_bin[i].cpu().squeeze(0).numpy()  # Shape H x W
-
-                    wandb.Image(
-                        img,
-                        masks={
-                            "ground_truth": {"mask_data": y_mask},
-                            "prediction": {"mask_data": pred_mask}
-                        }
-                    )
+            dice_sum += batch_metrics["dice"]
+            prec_sum += batch_metrics["precision"]
+            rec_sum  += batch_metrics["recall"]
+            hd95_sum += batch_metrics["hd95"]
+            n_batches += 1
 
         val_loss /= len(self.val_loader)
-
-        # Concatenate all batches
-        all_preds = torch.cat(all_preds, dim=0)
-        all_targets = torch.cat(all_targets, dim=0)
-
-        metric_dict = metrics.compute_all(all_preds, all_targets)
+        metric_dict = {
+            "dice":      dice_sum / n_batches,
+            "precision": prec_sum / n_batches,
+            "recall":    rec_sum  / n_batches,
+            "hd95":      hd95_sum / n_batches,
+        }
 
         log_dict = {"val_loss": val_loss, "epoch": epoch}
         log_dict.update(metric_dict)
-        if img_batches:
-            log_dict["val_images"] = img_batches
         wandb.log(log_dict)
 
         print(
