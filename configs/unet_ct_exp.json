@@ -11,7 +11,7 @@
         "leaky_negative_slope": 0.01
     },
     "dataset": {
-        "data_dir": "/kaggle/input/datasets/mohamednasserhussien/psma-pet-ct-lesions/PSMA-PET-CT-Lesions_v2",
+        "data_dir": "/kaggle/input/datasets/mohamednasserhussien/psma-pet-ct-2d-slices/data_2d",
         "splits_json": "/kaggle/input/datasets/mohamednasserhussien/data-split/splits_final.json",
         "fold": 0,
         "modality": "ct",
