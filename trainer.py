@@ -191,6 +191,8 @@ class Trainer:
     def fit(self):
         epochs = self.config.get("epochs", 50)
         best_val = float("inf")
+        patience = 10  # Early stopping patience
+        no_improve_counter = 0  # Counter for epochs without improvement
 
         for epoch in trange(epochs, desc="Training Epochs", unit="epoch"):
             train_loss = self.train_one_epoch(epoch)
@@ -198,7 +200,20 @@ class Trainer:
 
             print(f"Epoch [{epoch+1}/{epochs}] Train Loss: {train_loss:.4f} Val Loss: {val_loss:.4f}")
 
+            # Check for improvement
             if val_loss < best_val:
                 best_val = val_loss
-                torch.save(self.model.state_dict(), os.path.join(self.save_best_dir, f"{self.model_name}_best_model.pth"))
+                no_improve_counter = 0  # Reset counter
+                torch.save(
+                    self.model.state_dict(),
+                    os.path.join(self.save_best_dir, f"{self.model_name}_best_model.pth")
+                )
                 print("Saved best model!")
+            else:
+                no_improve_counter += 1
+                print(f"No improvement for {no_improve_counter}/{patience} epochs.")
+
+            # Early stopping
+            if no_improve_counter >= patience:
+                print(f"Early stopping triggered at epoch {epoch+1}")
+                break
