@@ -14,7 +14,7 @@ import torchvision
 
 from dataloaders import get_dataloaders 
 from losses import DiceBCELoss
-from metrics import BatchSegmentationMetrics
+#from metrics import BatchSegmentationMetrics
 from unet import *
 
 
@@ -129,7 +129,7 @@ class Trainer:
     def validate(self, epoch, num_images=20):
         self.model.eval()
         val_loss = 0.0
-        metrics = BatchSegmentationMetrics()
+        #metrics = BatchSegmentationMetrics()
         
         all_preds = []
         all_targets = []
@@ -170,20 +170,20 @@ class Trainer:
         all_preds = torch.cat(all_preds, dim=0)
         all_targets = torch.cat(all_targets, dim=0)
 
-        metric_dict = metrics.compute_all(all_preds, all_targets)
+        #metric_dict = metrics.compute_all(all_preds, all_targets)
 
         log_dict = {"val_loss": val_loss, "epoch": epoch}
-        log_dict.update(metric_dict)
+        #log_dict.update(metric_dict)
         if img_batches:
             log_dict["val_images"] = img_batches
         wandb.log(log_dict)
 
         print(
             f"Epoch [{epoch+1}] Val Loss: {val_loss:.4f} | "
-            f"Dice: {metric_dict['dice']:.4f} | "
-            f"Precision: {metric_dict['precision']:.4f} | "
-            f"Recall: {metric_dict['recall']:.4f} | "
-            f"HD95: {metric_dict['hd95']:.4f}"
+            # f"Dice: {metric_dict['dice']:.4f} | "
+            # f"Precision: {metric_dict['precision']:.4f} | "
+            # f"Recall: {metric_dict['recall']:.4f} | "
+            # f"HD95: {metric_dict['hd95']:.4f}"
         )
 
         return val_loss
