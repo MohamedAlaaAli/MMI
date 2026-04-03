@@ -13,7 +13,7 @@
     "dataset": {
         "data_dir": "/kaggle/input/datasets/mohamednasserhussien/psma-pet-ct-2d-slices/data_2d",
         "splits_json": "/kaggle/input/datasets/mohamednasserhussien/data-split/splits_final.json",
-        "fold": 0,
+        "fold": 1,
         "modality": "ct",
         "target_size": [256, 256]
     },
@@ -32,7 +32,7 @@
     "logging": {
         "use_wandb": true,
         "project": "MMI",
-        "experiment_name": "unet_ct",
+        "experiment_name": "unet_ct_fold1",
         "entity": "levitate",
         "log_model_summary": true,
         "ckpt_dir": "/kaggle/working/checkpoints"
