@@ -99,7 +99,8 @@ class Trainer:
         print(model_summary_str)
         wandb.log({"model_summary": wandb.Html(model_summary_str.replace("\n", "<br>"))})
 
-        self.save_best_dir = self.config.get("ckpt_dir", "ckpts")
+        self.save_best_dir = self.config["logging"].get("ckpt_dir", "ckpts")
+        os.makedirs(self.save_best_dir, exist_ok=True)
 
     def train_one_epoch(self, epoch):
         self.model.train()
