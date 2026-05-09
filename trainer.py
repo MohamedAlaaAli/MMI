@@ -189,13 +189,8 @@ class Trainer:
                 best_val = val_loss
                 no_improve_counter = 0  # Reset counter
                 torch.save(
-                    {
-                        "epoch": epoch,
-                        "model_state_dict": self.model.state_dict(),
-                        "optimizer_state_dict": self.optimizer.state_dict(),
-                        "val_loss": best_val,
-                    },
-                    os.path.join(self.save_best_dir, f"{self.model_name}_best_model.pth")
+                    self.model.state_dict(),
+                    f"{self.model_name}_best_model.pth"
                 )
                 print("Saved best model!")
             else:
