@@ -111,3 +111,4 @@ nnUNet_results/
 ckpts/
 wandb/
 
+mmi_venv/
