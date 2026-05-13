@@ -100,6 +100,7 @@ class Trainer:
         wandb.log({"model_summary": wandb.Html(model_summary_str.replace("\n", "<br>"))})
 
         self.save_best_dir = self.config.get("ckpt_dir", "ckpts")
+        os.makedirs(self.save_best_dir, exist_ok=True)
 
     def train_one_epoch(self, epoch):
         self.model.train()
@@ -172,7 +173,8 @@ class Trainer:
         return val_loss
 
     def fit(self):
-        epochs = self.config.get("epochs", 50)
+        # epochs = self.config.get("epochs", 50)
+        epochs = self.config["training"].get("epochs", 50)
         best_val = float("inf")
         patience = 10  # Early stopping patience
         no_improve_counter = 0  # Counter for epochs without improvement
@@ -189,7 +191,7 @@ class Trainer:
                 no_improve_counter = 0  # Reset counter
                 torch.save(
                     self.model.state_dict(),
-                    f"{self.model_name}_best_model.pth"
+                    f"{self.save_best_dir}/{self.model_name}_best_model.pth"
                 )
                 print("Saved best model!")
             else:

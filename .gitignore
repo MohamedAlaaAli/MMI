@@ -110,4 +110,6 @@ nnUNet_preprocessed/
 nnUNet_results/
 ckpts/
 wandb/
+logs/
 
+*.sh
