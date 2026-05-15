@@ -1,6 +1,7 @@
 {
   "model": {
     "name": "Unet",
+    "fusion": "late",
     "in_chans": 1,
     "out_chans": 1,
     "chans": 32,
@@ -11,14 +12,14 @@
     "leaky_negative_slope": 0.01
   },
   "dataset": {
-    "data_dir": "/kaggle/input/datasets/mohamednasserhussien/psma-pet-ct-2d-slices/data_2d",
+    "data_dir": "/home/mohamed0/scratch/projects/multimodal_petct/data2d/",
     "splits_json": "splits_final.json",
     "fold": 0,
-    "modality": "pet",
+    "modality": "both",
     "target_size": [256, 256]
   },
   "dataloader": {
-    "batch_size": 16,
+    "batch_size": 32,
     "num_workers": 4,
     "seed": 100
   },
@@ -32,7 +33,7 @@
   "logging": {
     "use_wandb": true,
     "project": "MMI",
-    "experiment_name": "unet_pet",
+    "experiment_name": "unet_both",
     "entity": "mohamedalaa00",
     "log_model_summary": true,
     "ckpt_dir": "checkpoints"

@@ -152,31 +152,31 @@ class Unet(nn.Module):
 # ======================
 # MODEL SUMMARY
 # ======================
-from torchinfo import summary
-import torch
+# from torchinfo import summary
+# import torch
 
-# Instantiate the model
-model = Unet(
-    in_chans=1,     
-    out_chans=1,    # tumor segmentation
-    chans=32,
-    num_pool_layers=4,
-    drop_prob=0.2,
-    use_att=True,
-    use_res=True
-)
+# # Instantiate the model
+# model = Unet(
+#     in_chans=1,     
+#     out_chans=1,    # tumor segmentation
+#     chans=32,
+#     num_pool_layers=4,
+#     drop_prob=0.2,
+#     use_att=True,
+#     use_res=True
+# )
 
-# Move to GPU if available
-device = "cuda" if torch.cuda.is_available() else "cpu"
-model.to(device)
+# # Move to GPU if available
+# device = "cuda" if torch.cuda.is_available() else "cpu"
+# model.to(device)
 
-# Create a dummy input tensor
-# Shape: (batch, channels, depth, height, width)
-x = torch.randn(1, 1, 128, 128).to(device)
+# # Create a dummy input tensor
+# # Shape: (batch, channels, depth, height, width)
+# x = torch.randn(1, 1, 128, 128).to(device)
 
-# Print the model summary
-summary(
-    model,
-    input_data=x,
-    col_names=["input_size", "output_size", "num_params", "kernel_size", "mult_adds"],
-)
+# # Print the model summary
+# summary(
+#     model,
+#     input_data=x,
+#     col_names=["input_size", "output_size", "num_params", "kernel_size", "mult_adds"],
+# )

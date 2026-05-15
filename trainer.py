@@ -53,6 +53,20 @@ class Trainer:
             use_res=self.config["model"].get("use_res", False)
         ).to(self.device)
 
+        self.fusion = self.config["model"].get("fusion", "concat")
+
+        if self.fusion == "late":
+            self.model_pet = self.model
+            self.model_ct = ModelClass(
+                                        in_chans=self.config["model"].get("in_chans", 1),
+                                        out_chans=self.config["model"].get("out_chans", 1),
+                                        chans=self.config["model"].get("chans", 32),
+                                        num_pool_layers=self.config["model"].get("num_pool_layers", 4),
+                                        drop_prob=self.config["model"].get("drop_prob", 0.2),
+                                        use_att=self.config["model"].get("use_att", False),
+                                        use_res=self.config["model"].get("use_res", False)
+                                    ).to(self.device)
+
         # -----------------------------
         # Dataloaders
         # -----------------------------
@@ -100,6 +114,7 @@ class Trainer:
         wandb.log({"model_summary": wandb.Html(model_summary_str.replace("\n", "<br>"))})
 
         self.save_best_dir = self.config.get("ckpt_dir", "ckpts")
+        os.makedirs(self.save_best_dir, exist_ok=True)
 
     def train_one_epoch(self, epoch):
         self.model.train()
@@ -111,7 +126,13 @@ class Trainer:
             x, y = x.to(self.device), y.to(self.device)
 
             self.optimizer.zero_grad()
-            out = self.model(x)
+            if self.fusion == "late":
+                x_pet, x_ct = x[:, 0:1, ...], x[:, 1:2, ...]  # Assuming input shape [B, 2, H, W]
+                out_pet = self.model_pet(x_pet)
+                out_ct = self.model_ct(x_ct)
+                out = (out_pet + out_ct) / 2  # Simple average fusion
+            else:
+                out = self.model(x)
 
             loss = self.criterion(out, y)
             loss.backward()
@@ -136,7 +157,14 @@ class Trainer:
 
         for batch_idx, (x, y) in enumerate(tqdm(self.val_loader, desc=f"Validation Epoch {epoch+1}", leave=False)):
             x, y = x.to(self.device), y.to(self.device)
-            out = self.model(x)
+            if self.fusion == "late":
+                x_pet, x_ct = x[:, 0:1, ...], x[:, 1:2, ...]  # Assuming input shape [B, 2, H, W]
+                out_pet = self.model_pet(x_pet)
+                out_ct = self.model_ct(x_ct)
+                out = (out_pet + out_ct) / 2  
+            else:
+                out = self.model(x)
+                
             loss = self.criterion(out, y)
             val_loss += loss.item()
 
@@ -172,7 +200,7 @@ class Trainer:
         return val_loss
 
     def fit(self):
-        epochs = self.config.get("epochs", 50)
+        epochs = self.config["training"].get("epochs", 50)
         best_val = float("inf")
         patience = 10  # Early stopping patience
         no_improve_counter = 0  # Counter for epochs without improvement
@@ -189,7 +217,7 @@ class Trainer:
                 no_improve_counter = 0  # Reset counter
                 torch.save(
                     self.model.state_dict(),
-                    f"{self.model_name}_best_model.pth"
+                    f"{self.save_best_dir}/{self.model_name}_best_model.pth"
                 )
                 print("Saved best model!")
             else:
