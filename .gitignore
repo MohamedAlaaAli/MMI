@@ -98,6 +98,9 @@ checkpoints/
 # =========================
 data/
 data_2d/
+data2d/
+logs/
+*.sh
 *.nii.gz
 *.npy
 *.npz

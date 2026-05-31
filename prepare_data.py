@@ -10,9 +10,9 @@ from sklearn.model_selection import KFold
 # ======================
 # CONFIG
 # ======================
-images_dir = "data/PSMA-PET-CT-Lesions_v2/imagesTr"
-labels_dir = "data/PSMA-PET-CT-Lesions_v2/labelsTr"
-out_dir = "/home/mohamed0/scratch/projects/multimodal_petct/data2d"
+images_dir = "./data/imagesTr"
+labels_dir = "./data/labelsTr"
+out_dir = "./data2d"
 os.makedirs(out_dir, exist_ok=True)
 
 save_empty_slices = False  

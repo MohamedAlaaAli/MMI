@@ -3,6 +3,77 @@ import torch.nn as nn
 import torch.nn.functional as F
 from blocks import *
 
+class LateFusionUNet(nn.Module):
+    """
+    Late fusion wrapper for two UNet-style models.
+
+    Assumptions:
+    - Both models return feature maps/logits of shape:
+        [B, C, H, W]
+    - Outputs have same spatial dimensions.
+    - You want to fuse AFTER both networks produce outputs.
+
+    Fusion modes:
+    - concat  -> concatenate channels then fuse with conv
+    - add     -> element
+    -wise addition
+    - avg     -> average outputs
+    """
+
+    def __init__(
+        self,
+        unet1: nn.Module,
+        unet2: nn.Module,
+        out_channels: int,
+        fusion_mode: str = "concat",
+    ):
+        super().__init__()
+
+        self.unet1 = unet1
+        self.unet2 = unet2
+        self.fusion_mode = fusion_mode.lower()
+
+        if self.fusion_mode == "concat":
+            self.fusion = nn.Sequential(
+                nn.Conv2d(out_channels * 2, out_channels, kernel_size=3, padding=1),
+                nn.BatchNorm2d(out_channels),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(out_channels, out_channels, kernel_size=1),
+            )
+
+        elif self.fusion_mode in ["add", "avg"]:
+            self.fusion = nn.Identity()
+
+        else:
+            raise ValueError(
+                f"Unsupported fusion mode: {fusion_mode}. "
+                f"Choose from ['concat', 'add', 'avg']"
+            )
+
+    def forward(self, x1, x2=None):
+        """
+        x1 : input for first UNet
+        x2 : input for second UNet
+             if None -> uses x1
+        """
+
+        if x2 is None:
+            x2 = x1
+
+        out1 = self.unet1(x1)
+        out2 = self.unet2(x2)
+
+        if self.fusion_mode == "concat":
+            fused = torch.cat([out1, out2], dim=1)
+            fused = self.fusion(fused)
+
+        elif self.fusion_mode == "add":
+            fused = out1 + out2
+
+        elif self.fusion_mode == "avg":
+            fused = (out1 + out2) / 2
+
+        return fused
 
 class Unet(nn.Module):
     """

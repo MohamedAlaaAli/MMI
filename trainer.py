@@ -56,8 +56,8 @@ class Trainer:
         self.fusion = self.config["model"].get("fusion", "concat")
 
         if self.fusion == "late":
-            self.model_pet = self.model
-            self.model_ct = ModelClass(
+            model_pet = self.model
+            model_ct = ModelClass(
                                         in_chans=self.config["model"].get("in_chans", 1),
                                         out_chans=self.config["model"].get("out_chans", 1),
                                         chans=self.config["model"].get("chans", 32),
@@ -66,6 +66,8 @@ class Trainer:
                                         use_att=self.config["model"].get("use_att", False),
                                         use_res=self.config["model"].get("use_res", False)
                                     ).to(self.device)
+            self.model = LateFusionUNet(model_pet, model_ct, 1, fusion_mode="avg").to(self.device)
+
 
         # -----------------------------
         # Dataloaders
@@ -113,7 +115,7 @@ class Trainer:
         print(model_summary_str)
         wandb.log({"model_summary": wandb.Html(model_summary_str.replace("\n", "<br>"))})
 
-        self.save_best_dir = self.config.get("ckpt_dir", "ckpts")
+        self.save_best_dir = self.config.get("ckpt_dir", "ckpts_fold_2")
         os.makedirs(self.save_best_dir, exist_ok=True)
 
     def train_one_epoch(self, epoch):
@@ -128,9 +130,10 @@ class Trainer:
             self.optimizer.zero_grad()
             if self.fusion == "late":
                 x_pet, x_ct = x[:, 0:1, ...], x[:, 1:2, ...]  # Assuming input shape [B, 2, H, W]
-                out_pet = self.model_pet(x_pet)
-                out_ct = self.model_ct(x_ct)
-                out = (out_pet + out_ct) / 2  # Simple average fusion
+                # out_pet = self.model_pet(x_pet)
+                # out_ct = self.model_ct(x_ct)
+                out = self.model(x_pet, x_ct)
+                # out = (out_pet + out_ct) / 2  # Simple average fusion
             else:
                 out = self.model(x)
 
@@ -159,9 +162,10 @@ class Trainer:
             x, y = x.to(self.device), y.to(self.device)
             if self.fusion == "late":
                 x_pet, x_ct = x[:, 0:1, ...], x[:, 1:2, ...]  # Assuming input shape [B, 2, H, W]
-                out_pet = self.model_pet(x_pet)
-                out_ct = self.model_ct(x_ct)
-                out = (out_pet + out_ct) / 2  
+                # out_pet = self.model_pet(x_pet)
+                # out_ct = self.model_ct(x_ct)
+                # out = (out_pet + out_ct) / 2  
+                out = self.model(x_pet, x_ct)
             else:
                 out = self.model(x)
                 
