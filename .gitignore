@@ -111,7 +111,8 @@ logs/
 nnUNet_raw/
 nnUNet_preprocessed/
 nnUNet_results/
-ckpts/
+ckpts*/
 wandb/
+archive/
 
 mmi_venv/

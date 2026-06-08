@@ -12,7 +12,7 @@ import torch.optim as optim
 from torchinfo import summary
 import torchvision
 
-from dataloaders import get_dataloaders 
+from dataloaders import get_dataloaders
 from losses import DiceBCELoss
 from metrics import BatchSegmentationMetrics
 from unet import *
@@ -35,39 +35,72 @@ class Trainer:
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
 
-        # -----------------------------
-        # Initialize model dynamically
-        # -----------------------------
-        self.model_name = self.config["model"].get("name", "Unet")
-        if self.model_name not in globals():
-            raise ValueError(f"Model {self.model_name} not found. Make sure it's imported or defined.")
-        ModelClass = globals()[self.model_name]
+        self.fusion = self.config["model"].get("fusion", "none")
 
-        self.model = ModelClass(
-            in_chans=self.config["model"].get("in_chans", 1),
-            out_chans=self.config["model"].get("out_chans", 1),
-            chans=self.config["model"].get("chans", 32),
-            num_pool_layers=self.config["model"].get("num_pool_layers", 4),
-            drop_prob=self.config["model"].get("drop_prob", 0.2),
-            use_att=self.config["model"].get("use_att", False),
-            use_res=self.config["model"].get("use_res", False)
-        ).to(self.device)
+        if self.fusion == "intermediate":
+            self.model = IntermediateFusionUNet(
+                in_chans_ct=self.config["model"].get("in_chans_ct", 1),
+                in_chans_pet=self.config["model"].get("in_chans_pet", 1),
+                out_chans=self.config["model"].get("out_chans", 1),
+                chans=self.config["model"].get("chans", 32),
+                num_pool_layers=self.config["model"].get("num_pool_layers", 4),
+                drop_prob=self.config["model"].get("drop_prob", 0.2),
+                use_att=self.config["model"].get("use_att", False),
+                use_res=self.config["model"].get("use_res", False),
+                fusion_mode=self.config["model"].get("fusion_mode", "concat"),
+                fuse_skips=self.config["model"].get("fuse_skips", True),
+            ).to(self.device)
+            self.model_name = "IntermediateFusionUNet"
 
-        self.fusion = self.config["model"].get("fusion", "concat")
+        elif self.fusion == "early_intermediate":
+            self.model = EarlyIntermediateFusionUNet(
+                in_chans_ct=self.config["model"].get("in_chans_ct", 1),
+                in_chans_pet=self.config["model"].get("in_chans_pet", 1),
+                out_chans=self.config["model"].get("out_chans", 1),
+                chans=self.config["model"].get("chans", 32),
+                num_pool_layers=self.config["model"].get("num_pool_layers", 4),
+                fusion_depth=self.config["model"].get("fusion_depth", 2),
+                drop_prob=self.config["model"].get("drop_prob", 0.2),
+                use_att=self.config["model"].get("use_att", False),
+                use_res=self.config["model"].get("use_res", False),
+                fusion_mode=self.config["model"].get("fusion_mode", "concat"),
+                fuse_skips=self.config["model"].get("fuse_skips", True),
+            ).to(self.device)
+            self.model_name = "EarlyIntermediateFusionUNet"
 
-        if self.fusion == "late":
-            model_pet = self.model
-            model_ct = ModelClass(
-                                        in_chans=self.config["model"].get("in_chans", 1),
-                                        out_chans=self.config["model"].get("out_chans", 1),
-                                        chans=self.config["model"].get("chans", 32),
-                                        num_pool_layers=self.config["model"].get("num_pool_layers", 4),
-                                        drop_prob=self.config["model"].get("drop_prob", 0.2),
-                                        use_att=self.config["model"].get("use_att", False),
-                                        use_res=self.config["model"].get("use_res", False)
-                                    ).to(self.device)
-            self.model = LateFusionUNet(model_pet, model_ct, 1, fusion_mode="avg").to(self.device)
+        else:
+            self.model_name = self.config["model"].get("name", "Unet")
+            if self.model_name not in globals():
+                raise ValueError(
+                    f"Model {self.model_name} not found. "
+                    "Make sure it's imported or defined."
+                )
+            ModelClass = globals()[self.model_name]
 
+            self.model = ModelClass(
+                in_chans=self.config["model"].get("in_chans", 1),
+                out_chans=self.config["model"].get("out_chans", 1),
+                chans=self.config["model"].get("chans", 32),
+                num_pool_layers=self.config["model"].get("num_pool_layers", 4),
+                drop_prob=self.config["model"].get("drop_prob", 0.2),
+                use_att=self.config["model"].get("use_att", False),
+                use_res=self.config["model"].get("use_res", False),
+            ).to(self.device)
+
+            if self.fusion == "late":
+                model_pet = self.model
+                model_ct = ModelClass(
+                    in_chans=self.config["model"].get("in_chans", 1),
+                    out_chans=self.config["model"].get("out_chans", 1),
+                    chans=self.config["model"].get("chans", 32),
+                    num_pool_layers=self.config["model"].get("num_pool_layers", 4),
+                    drop_prob=self.config["model"].get("drop_prob", 0.2),
+                    use_att=self.config["model"].get("use_att", False),
+                    use_res=self.config["model"].get("use_res", False),
+                ).to(self.device)
+                self.model = LateFusionUNet(
+                    model_pet, model_ct, 1, fusion_mode="avg"
+                ).to(self.device)
 
         # -----------------------------
         # Dataloaders
@@ -79,7 +112,7 @@ class Trainer:
             modality=self.config["dataset"].get("modality", "both"),
             batch_size=self.config["dataloader"].get("batch_size", 8),
             num_workers=self.config["dataloader"].get("num_workers", 4),
-            seed=seed
+            seed=seed,
         )
 
         # -----------------------------
@@ -97,46 +130,64 @@ class Trainer:
         # -----------------------------
         self.optimizer = optim.Adam(
             self.model.parameters(),
-            lr=self.config.get("lr", 1e-5)
+            lr=self.config.get("lr", 1e-5),
         )
 
         # -----------------------------
         # WandB
         # -----------------------------
-        wandb.init(project=self.config["logging"].get("project", "MMI"),
-                   config=self.config,
-                   name=self.config["logging"].get("experiment_name", None))
-        
+        wandb.init(
+            project=self.config["logging"].get("project", "MMI"),
+            config=self.config,
+            name=self.config["logging"].get("experiment_name", None),
+        )
         wandb.watch(self.model, log="all", log_freq=50)
 
-        # Log model summary
-        dummy_input = torch.randn(*self.config["training"].get("input_shape", [1, 1, 256, 256])).to(self.device)
-        model_summary_str = str(summary(self.model, input_data=dummy_input))
+        # Log model summary — dual-input for intermediate fusion
+        input_shape = self.config["training"].get("input_shape", [1, 1, 256, 256])
+        if self.fusion in ("intermediate", "early_intermediate"):
+            dummy_ct  = torch.randn(*input_shape).to(self.device)
+            dummy_pet = torch.randn(*input_shape).to(self.device)
+            model_summary_str = str(summary(self.model, input_data=(dummy_ct, dummy_pet)))
+        else:
+            dummy_input = torch.randn(*input_shape).to(self.device)
+            model_summary_str = str(summary(self.model, input_data=dummy_input))
+
         print(model_summary_str)
         wandb.log({"model_summary": wandb.Html(model_summary_str.replace("\n", "<br>"))})
 
         self.save_best_dir = self.config.get("ckpt_dir", "ckpts_fold_2")
         os.makedirs(self.save_best_dir, exist_ok=True)
 
+    def _forward(self, x):
+        """
+        Split CT/PET channels and call the model appropriately.
+        For late, intermediate, and early_intermediate fusion, x is expected to have shape
+        [B, 2, H, W] with channel 0 = PET and channel 1 = CT.
+        """
+        if self.fusion in ("late", "intermediate", "early_intermediate"):
+            x_pet = x[:, 0:1, ...]
+            x_ct  = x[:, 1:2, ...]
+            return self.model(x_ct, x_pet)
+        return self.model(x)
+
+
     def train_one_epoch(self, epoch):
         self.model.train()
         running_loss = 0.0
 
-        loop = tqdm(self.train_loader, desc=f"Epoch [{epoch+1}/{self.config.get('training', {}).get('epochs', 50)}]", leave=False)
+        total_epochs = self.config.get("training", {}).get("epochs", 50)
+        loop = tqdm(
+            self.train_loader,
+            desc=f"Epoch [{epoch + 1}/{total_epochs}]",
+            leave=False,
+        )
 
         for batch_idx, (x, y) in enumerate(loop):
             x, y = x.to(self.device), y.to(self.device)
 
             self.optimizer.zero_grad()
-            if self.fusion == "late":
-                x_pet, x_ct = x[:, 0:1, ...], x[:, 1:2, ...]  # Assuming input shape [B, 2, H, W]
-                # out_pet = self.model_pet(x_pet)
-                # out_ct = self.model_ct(x_ct)
-                out = self.model(x_pet, x_ct)
-                # out = (out_pet + out_ct) / 2  # Simple average fusion
-            else:
-                out = self.model(x)
-
+            out = self._forward(x)
             loss = self.criterion(out, y)
             loss.backward()
             self.optimizer.step()
@@ -158,17 +209,12 @@ class Trainer:
         dice_sum, prec_sum, rec_sum, hd95_sum = 0.0, 0.0, 0.0, 0.0
         n_batches = 0
 
-        for batch_idx, (x, y) in enumerate(tqdm(self.val_loader, desc=f"Validation Epoch {epoch+1}", leave=False)):
+        for x, y in tqdm(
+            self.val_loader, desc=f"Validation Epoch {epoch + 1}", leave=False
+        ):
             x, y = x.to(self.device), y.to(self.device)
-            if self.fusion == "late":
-                x_pet, x_ct = x[:, 0:1, ...], x[:, 1:2, ...]  # Assuming input shape [B, 2, H, W]
-                # out_pet = self.model_pet(x_pet)
-                # out_ct = self.model_ct(x_ct)
-                # out = (out_pet + out_ct) / 2  
-                out = self.model(x_pet, x_ct)
-            else:
-                out = self.model(x)
-                
+            out = self._forward(x)
+
             loss = self.criterion(out, y)
             val_loss += loss.item()
 
@@ -194,7 +240,7 @@ class Trainer:
         wandb.log(log_dict)
 
         print(
-            f"Epoch [{epoch+1}] Val Loss: {val_loss:.4f} | "
+            f"Epoch [{epoch + 1}] Val Loss: {val_loss:.4f} | "
             f"Dice: {metric_dict['dice']:.4f} | "
             f"Precision: {metric_dict['precision']:.4f} | "
             f"Recall: {metric_dict['recall']:.4f} | "
@@ -206,29 +252,30 @@ class Trainer:
     def fit(self):
         epochs = self.config["training"].get("epochs", 50)
         best_val = float("inf")
-        patience = 10  # Early stopping patience
-        no_improve_counter = 0  # Counter for epochs without improvement
+        patience = 10
+        no_improve_counter = 0
 
         for epoch in trange(epochs, desc="Training Epochs", unit="epoch"):
             train_loss = self.train_one_epoch(epoch)
-            val_loss = self.validate(epoch)
+            val_loss   = self.validate(epoch)
 
-            print(f"Epoch [{epoch+1}/{epochs}] Train Loss: {train_loss:.4f} Val Loss: {val_loss:.4f}")
+            print(
+                f"Epoch [{epoch + 1}/{epochs}] "
+                f"Train Loss: {train_loss:.4f}  Val Loss: {val_loss:.4f}"
+            )
 
-            # Check for improvement
             if val_loss < best_val:
                 best_val = val_loss
-                no_improve_counter = 0  # Reset counter
+                no_improve_counter = 0
                 torch.save(
                     self.model.state_dict(),
-                    f"{self.save_best_dir}/{self.model_name}_best_model.pth"
+                    f"{self.save_best_dir}/{self.model_name}_best_model.pth",
                 )
                 print("Saved best model!")
             else:
                 no_improve_counter += 1
                 print(f"No improvement for {no_improve_counter}/{patience} epochs.")
 
-            # Early stopping
             if no_improve_counter >= patience:
-                print(f"Early stopping triggered at epoch {epoch+1}")
+                print(f"Early stopping triggered at epoch {epoch + 1}")
                 break
