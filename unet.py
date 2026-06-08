@@ -486,12 +486,15 @@ class LateFusionUNet(nn.Module):
         unet2: nn.Module,
         out_channels: int,
         fusion_mode: str = "concat",
+        return_feats: bool = False
     ):
         super().__init__()
 
         self.unet1 = unet1
         self.unet2 = unet2
         self.fusion_mode = fusion_mode.lower()
+        self.return_feats = return_feats
+        
 
         if self.fusion_mode == "concat":
             self.fusion = nn.Sequential(
@@ -520,8 +523,12 @@ class LateFusionUNet(nn.Module):
         if x2 is None:
             x2 = x1
 
-        out1 = self.unet1(x1)
-        out2 = self.unet2(x2)
+        if self.return_feats:
+            out1, feat1 = self.unet1(x1)
+            out2, feat2 = self.unet2(x2)
+        else:
+            out1 = self.unet1(x1)
+            out2 = self.unet2(x2)
 
         if self.fusion_mode == "concat":
             fused = torch.cat([out1, out2], dim=1)
@@ -533,7 +540,7 @@ class LateFusionUNet(nn.Module):
         elif self.fusion_mode == "avg":
             fused = (out1 + out2) / 2
 
-        return fused
+        return fused, (feat1, feat2) if self.return_feats else fused
 
 class Unet(nn.Module):
     """
@@ -569,6 +576,7 @@ class Unet(nn.Module):
                 use_att:bool = False,
                 use_res = False,
                 leaky_negative_slope:float = 0.0,
+                return_feats:bool = False
                 ):
 
         super().__init__()
@@ -580,6 +588,7 @@ class Unet(nn.Module):
         self.use_res = use_res
         self.use_att = use_att
         self.leaky_negative_slope = leaky_negative_slope
+        self.return_feats = return_feats
 
         self.down_sample_layers = nn.ModuleList(
             [
@@ -656,6 +665,9 @@ class Unet(nn.Module):
         output = self.conv(output)
         if self.use_att:
             output = self.conv_att(output)
+        
+        if self.return_feats:
+            feat =  output
 
         # Upsampling path
         for idx in range(self.num_pool_layers):
@@ -677,4 +689,4 @@ class Unet(nn.Module):
                 output = self.up_att[idx](output)
 
         tumor_out = self.out_conv(output)
-        return tumor_out
+        return tumor_out, feat if self.return_feats else tumor_out

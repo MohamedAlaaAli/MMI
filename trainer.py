@@ -85,6 +85,7 @@ class Trainer:
                 drop_prob=self.config["model"].get("drop_prob", 0.2),
                 use_att=self.config["model"].get("use_att", False),
                 use_res=self.config["model"].get("use_res", False),
+                return_feats=self.config["model"].get("return_feats", False),
             ).to(self.device)
 
             if self.fusion == "late":
@@ -97,6 +98,7 @@ class Trainer:
                     drop_prob=self.config["model"].get("drop_prob", 0.2),
                     use_att=self.config["model"].get("use_att", False),
                     use_res=self.config["model"].get("use_res", False),
+                    return_feats=self.config["model"].get("return_feats", False),
                 ).to(self.device)
                 self.model = LateFusionUNet(
                     model_pet, model_ct, 1, fusion_mode="avg"
